@@ -49,6 +49,45 @@ function minimumFirmwareCell(module) {
   }" role="img" aria-label="${label}" title="${label}">${supported ? "✓" : "✗"}</span>`;
 }
 
+// The backend decodes the interval byte, so the ranges behind these modes stay
+// defined in one place; here they only get a label.
+const AUTOSEND_LABELS = {
+  never: "off",
+  on_change: "on change",
+  unknown: "?",
+};
+
+function autosendText(state) {
+  if (!state) {
+    return null;
+  }
+  if (state.mode === "interval") {
+    return `${state.seconds} s`;
+  }
+  return AUTOSEND_LABELS[state.mode] ?? state.mode;
+}
+
+function autosendCell(state) {
+  const text = autosendText(state);
+  if (text === null) {
+    return cell(null);
+  }
+  const title =
+    state.mode === "unknown"
+      ? "The module has not reported this setting yet."
+      : "How often the module puts this value on the bus.";
+  return `<span title="${title}">${escapeHtml(text)}</span>`;
+}
+
+// Sorts by the interval, with the modes that have no interval around it: off
+// first, then on change, then 10..255 s, and never-reported last.
+function autosendSortValue(state) {
+  if (!state) {
+    return null;
+  }
+  return { never: 1, on_change: 5, unknown: 256 }[state.mode] ?? state.seconds;
+}
+
 const COLUMNS = [
   {
     key: "address",
@@ -87,6 +126,18 @@ const COLUMNS = [
     label: "Minimum supported Firmware",
     sortValue: (module) => module.memory_map_build,
     render: minimumFirmwareCell,
+  },
+  {
+    key: "temp_autosend",
+    label: "Temp. transmit",
+    sortValue: (module) => autosendSortValue(module.temp_autosend),
+    render: (module) => autosendCell(module.temp_autosend),
+  },
+  {
+    key: "light_autosend",
+    label: "Light transmit",
+    sortValue: (module) => autosendSortValue(module.light_autosend),
+    render: (module) => autosendCell(module.light_autosend),
   },
   {
     key: "channels",

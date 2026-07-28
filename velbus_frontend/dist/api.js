@@ -72,7 +72,9 @@ export async function programAction(
   channel,
   sourceAddress,
   sourceChannel,
-  action
+  action,
+  slot,
+  times
 ) {
   return callWs("velbus/config_panel/module/actions/set", {
     address,
@@ -80,6 +82,10 @@ export async function programAction(
     source_address: sourceAddress,
     source_channel: sourceChannel,
     action,
+    // Writing an existing slot replaces it; without one the module picks a
+    // free slot itself.
+    ...(slot === null || slot === undefined ? {} : { slot }),
+    ...(times || {}),
   });
 }
 

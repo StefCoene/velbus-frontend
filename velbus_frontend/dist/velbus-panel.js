@@ -47,6 +47,7 @@ class VelbusPanel extends HTMLElement {
     this._actionSlots = [];
     this._sourceModuleAddress = null;
     this._showAddActionDialog = false;
+    this._editingSlot = null;
     this._loading = false;
     this._loadingActions = false;
     this._moduleBusy = false;
@@ -430,6 +431,7 @@ class VelbusPanel extends HTMLElement {
       advancedMode: this._advancedMode,
       showAddActionDialog: this._showAddActionDialog,
       sourceModuleAddress: this._sourceModuleAddress,
+      editingSlot: this._editingSlot,
     });
   }
 
@@ -467,11 +469,25 @@ class VelbusPanel extends HTMLElement {
         if (this._modulePageBusy()) {
           return;
         }
+        this._editingSlot = null;
+        this._sourceModuleAddress = null;
+        this._showAddActionDialog = true;
+        this._render();
+      },
+      onEditAction: (slot) => {
+        if (this._modulePageBusy()) {
+          return;
+        }
+        this._editingSlot =
+          this._actionSlots.find((item) => item.slot === slot) ?? null;
+        // Start on the module the slot points at, not on the first in the list.
+        this._sourceModuleAddress = this._editingSlot?.source_address ?? null;
         this._showAddActionDialog = true;
         this._render();
       },
       onHideAddAction: () => {
         this._showAddActionDialog = false;
+        this._editingSlot = null;
         this._render();
       },
       onSourceModuleChange: (address, root) => {
@@ -489,15 +505,27 @@ class VelbusPanel extends HTMLElement {
           return;
         }
         await this._withModuleBusy(async () => {
+          const editing = this._editingSlot;
           await programAction(
             this._callWs,
             this._moduleAddress,
             this._actionChannel,
             sourceAddress,
             sourceChannel,
-            action
+            action,
+            editing?.slot,
+            // Keep the timings the slot already had; the dialog does not offer
+            // them, so rewriting the slot must not silently drop them.
+            editing
+              ? {
+                  time1: editing.time1,
+                  time2: editing.time2,
+                  time3: editing.time3,
+                }
+              : null
           );
           this._showAddActionDialog = false;
+          this._editingSlot = null;
           await this._refreshActions();
         });
       },

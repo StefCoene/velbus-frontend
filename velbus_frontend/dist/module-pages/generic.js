@@ -128,20 +128,26 @@ function renderAddActionDialog(ctx) {
     advancedMode,
     interactionsDisabled,
     sourceModuleAddress,
+    editingSlot,
   } = ctx;
   if (!showAddActionDialog || !actionTable) {
     return "";
   }
   const editable = canEdit(advancedMode, interactionsDisabled);
+  // When editing, the dialog starts on the module the slot already points at.
   const sourceAddress =
-    sourceModuleAddress ?? (modules.length ? modules[0].address : null);
+    sourceModuleAddress ?? editingSlot?.source_address ??
+    (modules.length ? modules[0].address : null);
+  const noun = actionTable.kind === "input" ? "input action" : "action";
   return `
     <div class="dialog-backdrop" id="add-action-dialog">
       <div class="dialog card">
-        <h3>Add ${
-          actionTable.kind === "input" ? "input action" : "action"
-        }</h3>
-        <p class="muted">Program a new action for the selected channel.</p>
+        <h3>${editingSlot ? `Edit ${noun}` : `Add ${noun}`}</h3>
+        <p class="muted">${
+          editingSlot
+            ? `Slot ${editingSlot.slot} is overwritten with what you choose here.`
+            : "Program a new action for the selected channel."
+        }</p>
         <label><span>Source module</span>
           <select id="source-module" ${editable ? "" : "disabled"}>
             ${modules
@@ -156,7 +162,11 @@ function renderAddActionDialog(ctx) {
         </label>
         <label><span>Source channel</span>
           <select id="source-channel" ${editable ? "" : "disabled"}>
-            ${sourceChannelOptions(modules, sourceAddress)}
+            ${sourceChannelOptions(
+              modules,
+              sourceAddress,
+              editingSlot?.source_channel
+            )}
           </select>
         </label>
         <label><span>Action</span>
@@ -164,7 +174,9 @@ function renderAddActionDialog(ctx) {
             ${actionTable.actions
               .map(
                 (action) =>
-                  `<option value="${action.key}">${action.label}</option>`
+                  `<option value="${action.key}"${
+                    action.key === editingSlot?.action_key ? " selected" : ""
+                  }>${action.label}</option>`
               )
               .join("")}
           </select>
@@ -173,7 +185,7 @@ function renderAddActionDialog(ctx) {
           <button class="secondary" id="cancel-add-action">Cancel</button>
           <button id="confirm-add-action" ${
             editable ? "" : "disabled"
-          }>Program action</button>
+          }>${editingSlot ? "Save action" : "Program action"}</button>
         </div>
       </div>
     </div>`;
@@ -190,6 +202,7 @@ export function render(ctx) {
     advancedMode,
     showAddActionDialog,
     sourceModuleAddress,
+    editingSlot,
   } = ctx;
 
   if (!moduleData) {
@@ -227,6 +240,7 @@ export function render(ctx) {
     advancedMode,
     interactionsDisabled,
     sourceModuleAddress,
+    editingSlot,
   };
 
   return `
@@ -367,9 +381,12 @@ export function render(ctx) {
                         <td>${slot.action_label || slot.action_key || ""}</td>
                         <td>${
                           editable
-                            ? `<button class="link" data-clear-slot="${slot.slot}" ${
+                            ? `<button class="link" data-edit-slot="${slot.slot}" ${
                                 interactionsDisabled ? "disabled" : ""
-                              }>Clear</button>`
+                              }>Edit</button>
+                               <button class="link" data-clear-slot="${slot.slot}" ${
+                                 interactionsDisabled ? "disabled" : ""
+                               }>Clear</button>`
                             : ""
                         }</td>
                       </tr>`
@@ -475,6 +492,12 @@ export function bind(root, handlers) {
     const sourceChannel = Number(root.querySelector("#source-channel")?.value);
     const action = root.querySelector("#action-key")?.value;
     handlers.onProgramAction(sourceAddress, sourceChannel, action);
+  });
+
+  root.querySelectorAll("[data-edit-slot]").forEach((element) => {
+    element.addEventListener("click", () => {
+      handlers.onEditAction?.(Number(element.dataset.editSlot));
+    });
   });
 
   root.querySelectorAll("[data-clear-slot]").forEach((element) => {

@@ -37,7 +37,7 @@ export function formatSourceChannel(slot) {
     : `${slot.source_channel}`;
 }
 
-export function sourceChannelOptions(modules, moduleAddress) {
+export function sourceChannelOptions(modules, moduleAddress, selected) {
   const module = getModule(modules, moduleAddress);
   if (!module?.channels) {
     return "";
@@ -46,7 +46,8 @@ export function sourceChannelOptions(modules, moduleAddress) {
     .sort(([left], [right]) => Number(left) - Number(right))
     .map(([channel, info]) => {
       const label = info.name || `Channel ${channel}`;
-      return `<option value="${channel}">${label}</option>`;
+      const isSelected = Number(channel) === Number(selected) ? " selected" : "";
+      return `<option value="${channel}"${isSelected}>${label}</option>`;
     })
     .join("");
 }

@@ -16,7 +16,14 @@ import {
   loadModulePage,
   resolveModulePageType,
 } from "./module-pages/registry.js";
-import { bindModulesList, renderModulesList } from "./pages/modules-list.js";
+import {
+  DEFAULT_MODULE_VIEW,
+  MODULE_VIEWS,
+  bindModulesList,
+  renderModulesList,
+} from "./pages/modules-list.js";
+
+const MODULE_VIEW_STORAGE_KEY = "velbus-panel:modules-view";
 
 class VelbusPanel extends HTMLElement {
   constructor() {
@@ -29,6 +36,7 @@ class VelbusPanel extends HTMLElement {
     this._callWs = undefined;
     this._advancedMode = false;
     this._modules = [];
+    this._modulesView = this._readStoredModulesView();
     this._moduleAddress = null;
     this._moduleData = null;
     this._modulePage = null;
@@ -82,6 +90,32 @@ class VelbusPanel extends HTMLElement {
       return searchParams.get("config_entry");
     }
     return undefined;
+  }
+
+  // localStorage is unavailable when the browser blocks storage for the iframe.
+  _readStoredModulesView() {
+    try {
+      const stored = window.localStorage?.getItem(MODULE_VIEW_STORAGE_KEY);
+      if (MODULE_VIEWS.includes(stored)) {
+        return stored;
+      }
+    } catch (_error) {
+      // fall through to the default
+    }
+    return DEFAULT_MODULE_VIEW;
+  }
+
+  _setModulesView(view) {
+    if (!MODULE_VIEWS.includes(view) || view === this._modulesView) {
+      return;
+    }
+    this._modulesView = view;
+    try {
+      window.localStorage?.setItem(MODULE_VIEW_STORAGE_KEY, view);
+    } catch (_error) {
+      // remembering the choice is a convenience, not a requirement
+    }
+    this._render();
   }
 
   _modulePageBusy() {
@@ -363,7 +397,10 @@ class VelbusPanel extends HTMLElement {
   _renderPageContent() {
     const route = this._parseRoute();
     if (route.page === "list") {
-      return renderModulesList({ modules: this._modules });
+      return renderModulesList({
+        modules: this._modules,
+        view: this._modulesView,
+      });
     }
     if (!this._modulePage) {
       return "";
@@ -387,6 +424,9 @@ class VelbusPanel extends HTMLElement {
       bindModulesList(contentRoot, {
         onSelect: (address) => {
           this._navigate(`/module/${address}`);
+        },
+        onChangeView: (view) => {
+          this._setModulesView(view);
         },
       });
       return;

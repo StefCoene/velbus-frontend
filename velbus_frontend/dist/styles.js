@@ -37,6 +37,36 @@ export const PANEL_STYLES = `
   .warning { color: var(--warning-color, #f57c00); }
   .modules-section { margin-bottom: 16px; }
   .modules-section h2 { margin-bottom: 16px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .section-header h2 { margin: 0; }
+  .view-switch {
+    display: inline-flex;
+    border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  button.view-option {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: var(--primary-text-color, #212121);
+    font-size: 0.9rem;
+  }
+  button.view-option + button.view-option {
+    border-left: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+  }
+  button.view-option.active {
+    background: var(--primary-color, #03a9f4);
+    color: var(--text-primary-color, #fff);
+  }
   .module-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -161,6 +191,28 @@ export const PANEL_STYLES = `
     border-bottom: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
   }
   th { color: var(--secondary-text-color, #727272); font-weight: 600; }
+  th.numeric, td.numeric { text-align: right; }
+  .table-scroll { overflow-x: auto; }
+  .modules-table { margin-top: 0; white-space: nowrap; }
+  .modules-table .module-row { cursor: pointer; }
+  .modules-table .module-row:hover,
+  .modules-table .module-row:focus-visible {
+    background: var(--secondary-background-color, #e5e5e5);
+    outline: none;
+  }
+  .modules-table .module-name-cell { font-weight: 500; white-space: normal; }
+  .badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+  .badge-warning {
+    background: var(--warning-color, #f57c00);
+    color: var(--text-primary-color, #fff);
+  }
   button {
     padding: 8px 12px;
     border-radius: 8px;

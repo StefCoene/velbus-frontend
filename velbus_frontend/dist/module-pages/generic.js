@@ -65,30 +65,51 @@ function settingControl(param, disabled) {
 
 // These settings are sent as a bus message rather than written to module
 // memory, so they do not need advanced mode the way the action table does.
+function settingRow(param, interactionsDisabled) {
+  const unit = param.metadata?.unit;
+  const hint = param.metadata?.hint;
+  return `<label class="setting">
+    <span>${escapeAttr(param.label)}${
+      unit ? ` <span class="muted">(${escapeAttr(unit)})</span>` : ""
+    }</span>
+    ${settingControl(param, interactionsDisabled)}
+    ${hint ? `<small class="muted">${escapeAttr(hint)}</small>` : ""}
+    ${
+      param.value === null
+        ? `<small class="warning">The module has not reported this value.</small>`
+        : ""
+    }
+  </label>`;
+}
+
 function renderSettings(config, interactionsDisabled) {
   if (!config || !config.length) {
     return "";
   }
+  // The backend names the group, so the panel follows the headings VelbusLink
+  // uses instead of inventing its own. Ungrouped settings come first.
+  const groups = new Map([[null, []]]);
+  for (const param of config) {
+    const key = param.group || null;
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key).push(param);
+  }
+  const rows = (params) =>
+    params.map((param) => settingRow(param, interactionsDisabled)).join("");
+
   return `
     <section class="card">
       <h3>Settings</h3>
-      ${config
-        .map((param) => {
-          const unit = param.metadata?.unit;
-          const hint = param.metadata?.hint;
-          return `<label class="setting">
-            <span>${escapeAttr(param.label)}${
-              unit ? ` <span class="muted">(${escapeAttr(unit)})</span>` : ""
-            }</span>
-            ${settingControl(param, interactionsDisabled)}
-            ${hint ? `<small class="muted">${escapeAttr(hint)}</small>` : ""}
-            ${
-              param.value === null
-                ? `<small class="warning">The module has not reported this value.</small>`
-                : ""
-            }
-          </label>`;
-        })
+      ${rows(groups.get(null))}
+      ${[...groups]
+        .filter(([name]) => name !== null)
+        .map(
+          ([name, params]) => `
+        <h4 class="setting-group">${escapeAttr(name)}</h4>
+        ${rows(params)}`
+        )
         .join("")}
       <div class="dialog-actions">
         <span class="muted" id="settings-status"></span>

@@ -219,6 +219,13 @@ export const PANEL_STYLES = `
   button.sort-header:hover { color: var(--primary-text-color, #212121); }
   button.sort-header.active { color: var(--primary-color, #03a9f4); }
   .sort-arrow { font-size: 0.7rem; line-height: 1; }
+  .setting-group {
+    margin: 20px 0 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+    font-size: 0.95rem;
+    color: var(--secondary-text-color, #727272);
+  }
   .status { margin-left: 6px; font-weight: 700; }
   .status-ok { color: var(--success-color, #43a047); }
   .status-bad { color: var(--error-color, #db4437); }

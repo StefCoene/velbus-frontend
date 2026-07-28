@@ -8,6 +8,7 @@ import {
   formatSourceModule,
   isProgrammedSlot,
   sourceChannelOptions,
+  sourceTooltip,
 } from "./base.js";
 
 function canEdit(advancedMode, interactionsDisabled) {
@@ -293,13 +294,22 @@ export function render(ctx) {
                   )
                     ? `<label class="channel-rename">
                         <span>Channel name</span>
-                        <input
-                          type="text"
-                          maxlength="16"
-                          data-channel-name="${actionChannel}"
-                          value="${channels[String(actionChannel)]?.name || ""}"
-                          ${editable ? "" : "disabled"}
-                        />
+                        <span class="rename-row">
+                          <input
+                            type="text"
+                            maxlength="16"
+                            id="channel-name-input"
+                            data-original="${escapeAttr(
+                              channels[String(actionChannel)]?.name || ""
+                            )}"
+                            value="${escapeAttr(
+                              channels[String(actionChannel)]?.name || ""
+                            )}"
+                            ${editable ? "" : "disabled"}
+                          />
+                          <button type="button" class="primary" id="save-channel-name"
+                            data-channel="${actionChannel}" disabled>Save</button>
+                        </span>
                       </label>`
                     : ""
                 }
@@ -350,9 +360,9 @@ export function render(ctx) {
                           .map(
                             (slot) => `<tr>
                         <td>${slot.slot}</td>
-                        <td title="${slot.source_address}:${
-                              slot.source_channel ?? "?"
-                            }">${formatSourceModule(slot)}</td>
+                        <td title="${escapeAttr(
+                              sourceTooltip(slot)
+                            )}">${formatSourceModule(slot)}</td>
                         <td>${formatSourceChannel(slot)}</td>
                         <td>${slot.action_label || slot.action_key || ""}</td>
                         <td>${
@@ -473,14 +483,19 @@ export function bind(root, handlers) {
     });
   });
 
-  root.querySelectorAll("[data-channel-name]").forEach((element) => {
-    element.addEventListener("change", (event) => {
+  const nameInput = root.querySelector("#channel-name-input");
+  const nameButton = root.querySelector("#save-channel-name");
+  if (nameInput && nameButton) {
+    nameInput.addEventListener("input", () => {
+      nameButton.disabled = nameInput.value === nameInput.dataset.original;
+    });
+    nameButton.addEventListener("click", () => {
       handlers.onSaveChannelName(
-        Number(event.target.dataset.channelName),
-        event.target.value
+        Number(nameButton.dataset.channel),
+        nameInput.value
       );
     });
-  });
+  }
 
   root.querySelectorAll("[data-channel-enable]").forEach((element) => {
     element.addEventListener("change", (event) => {

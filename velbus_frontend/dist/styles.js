@@ -219,6 +219,9 @@ export const PANEL_STYLES = `
   button.sort-header:hover { color: var(--primary-text-color, #212121); }
   button.sort-header.active { color: var(--primary-color, #03a9f4); }
   .sort-arrow { font-size: 0.7rem; line-height: 1; }
+  .rename-row { display: flex; gap: 8px; align-items: center; }
+  .rename-row input { flex: 1 1 auto; }
+  .rename-row button { flex: 0 0 auto; padding: 8px 12px; }
   .setting-group {
     margin: 20px 0 12px;
     padding-top: 12px;

@@ -16,6 +16,16 @@ export function formatSourceModule(slot) {
   return slot.source_module_name || `Address ${slot.source_address}`;
 }
 
+// What the module actually stores, for comparing against VelbusLink: the type,
+// and the raw address and channel the slot holds. A subaddress shows here as
+// itself, not as the primary address its name came from.
+export function sourceTooltip(slot) {
+  const address = `${slot.source_address}:${slot.source_channel ?? "?"}`;
+  return slot.source_module_type
+    ? `${slot.source_module_type} — ${address}`
+    : address;
+}
+
 // The number stays visible next to the name: it is what the module itself
 // stores, and what you compare against when reading a table in VelbusLink.
 export function formatSourceChannel(slot) {

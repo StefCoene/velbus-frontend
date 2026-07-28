@@ -29,7 +29,12 @@ function escapeAttr(value) {
 
 function settingControl(param, disabled) {
   const id = `${param.channel}:${param.key}`;
-  const common = `data-config="${escapeAttr(id)}" ${disabled ? "disabled" : ""}`;
+  // The original is kept on the element so Save can tell what actually
+  // changed, and send only that rather than rewriting every setting.
+  const original = param.kind === "bool" ? String(!!param.value) : `${param.value ?? ""}`;
+  const common = `data-config="${escapeAttr(id)}" data-original="${escapeAttr(
+    original
+  )}" ${disabled ? "disabled" : ""}`;
   if (param.kind === "bool") {
     return `<input type="checkbox" ${common} ${param.value ? "checked" : ""} />`;
   }
@@ -85,6 +90,10 @@ function renderSettings(config, interactionsDisabled) {
           </label>`;
         })
         .join("")}
+      <div class="dialog-actions">
+        <span class="muted" id="settings-status"></span>
+        <button type="button" class="primary" id="save-settings" disabled>Save</button>
+      </div>
     </section>`;
 }
 
@@ -468,16 +477,40 @@ export function bind(root, handlers) {
     });
   });
 
-  root.querySelectorAll("[data-config]").forEach((element) => {
-    element.addEventListener("change", (event) => {
-      const [channel, key] = event.target.dataset.config.split(":");
-      const value =
-        event.target.type === "checkbox"
-          ? event.target.checked
-          : event.target.type === "number"
-            ? Number(event.target.value)
-            : event.target.value;
-      handlers.onSaveConfig?.(Number(channel), key, value);
+  const settings = [...root.querySelectorAll("[data-config]")];
+  const saveButton = root.querySelector("#save-settings");
+  const status = root.querySelector("#settings-status");
+
+  const currentValue = (element) =>
+    element.type === "checkbox" ? String(element.checked) : element.value;
+  const changed = () =>
+    settings.filter(
+      (element) => currentValue(element) !== element.dataset.original
+    );
+
+  settings.forEach((element) => {
+    // "input" rather than "change" so the button wakes up while typing, not
+    // only once the field is left.
+    element.addEventListener("input", () => {
+      const count = changed().length;
+      saveButton.disabled = count === 0;
+      status.textContent = count ? `${count} unsaved` : "";
     });
+  });
+
+  saveButton?.addEventListener("click", () => {
+    const edits = changed().map((element) => {
+      const [channel, key] = element.dataset.config.split(":");
+      const value =
+        element.type === "checkbox"
+          ? element.checked
+          : element.type === "number"
+            ? Number(element.value)
+            : element.value;
+      return { channel: Number(channel), key, value };
+    });
+    if (edits.length) {
+      handlers.onSaveConfig?.(edits);
+    }
   });
 }

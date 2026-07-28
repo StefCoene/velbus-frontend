@@ -544,18 +544,22 @@ class VelbusPanel extends HTMLElement {
           await this._refreshActions();
         });
       },
-      onSaveConfig: async (channel, key, value) => {
+      onSaveConfig: async (edits) => {
         if (this._modulePageBusy()) {
           return;
         }
         await this._withModuleBusy(async () => {
-          await saveConfigParameter(
-            this._callWs,
-            this._moduleAddress,
-            channel,
-            key,
-            value
-          );
+          // One at a time: each write puts a message on a 16.6 kbit/s bus,
+          // and a module that rejects one must not hide the rest.
+          for (const edit of edits) {
+            await saveConfigParameter(
+              this._callWs,
+              this._moduleAddress,
+              edit.channel,
+              edit.key,
+              edit.value
+            );
+          }
           await this._loadModulePage(this._moduleAddress);
         });
       },

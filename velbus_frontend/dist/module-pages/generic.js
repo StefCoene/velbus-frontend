@@ -13,6 +13,81 @@ function canEdit(advancedMode, interactionsDisabled) {
   return advancedMode && !interactionsDisabled;
 }
 
+function escapeAttr(value) {
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[character]
+  );
+}
+
+function settingControl(param, disabled) {
+  const id = `${param.channel}:${param.key}`;
+  const common = `data-config="${escapeAttr(id)}" ${disabled ? "disabled" : ""}`;
+  if (param.kind === "bool") {
+    return `<input type="checkbox" ${common} ${param.value ? "checked" : ""} />`;
+  }
+  if (param.kind === "select") {
+    return `<select ${common}>
+      ${(param.options || [])
+        .map(
+          (option) =>
+            `<option value="${escapeAttr(option)}"${
+              option === param.value ? " selected" : ""
+            }>${escapeAttr(option)}</option>`
+        )
+        .join("")}
+    </select>`;
+  }
+  if (param.kind === "number") {
+    const min = param.min === null ? "" : `min="${param.min}"`;
+    const max = param.max === null ? "" : `max="${param.max}"`;
+    return `<input type="number" ${min} ${max} ${common} value="${
+      param.value === null ? "" : escapeAttr(param.value)
+    }" />`;
+  }
+  const maxLength = param.max_length ? `maxlength="${param.max_length}"` : "";
+  return `<input type="text" ${maxLength} ${common} value="${escapeAttr(
+    param.value ?? ""
+  )}" />`;
+}
+
+// These settings are sent as a bus message rather than written to module
+// memory, so they do not need advanced mode the way the action table does.
+function renderSettings(config, interactionsDisabled) {
+  if (!config || !config.length) {
+    return "";
+  }
+  return `
+    <section class="card">
+      <h3>Settings</h3>
+      ${config
+        .map((param) => {
+          const unit = param.metadata?.unit;
+          const hint = param.metadata?.hint;
+          return `<label class="setting">
+            <span>${escapeAttr(param.label)}${
+              unit ? ` <span class="muted">(${escapeAttr(unit)})</span>` : ""
+            }</span>
+            ${settingControl(param, interactionsDisabled)}
+            ${hint ? `<small class="muted">${escapeAttr(hint)}</small>` : ""}
+            ${
+              param.value === null
+                ? `<small class="warning">The module has not reported this value.</small>`
+                : ""
+            }
+          </label>`;
+        })
+        .join("")}
+    </section>`;
+}
+
 function renderAddActionDialog(ctx) {
   const {
     showAddActionDialog,
@@ -142,6 +217,7 @@ export function render(ctx) {
           : ""
       }
     </section>
+    ${renderSettings(moduleData.config, interactionsDisabled)}
     ${
       actionTable
         ? `<div class="module-layout">
@@ -389,6 +465,19 @@ export function bind(root, handlers) {
         Number(event.target.dataset.channelContact),
         event.target.value
       );
+    });
+  });
+
+  root.querySelectorAll("[data-config]").forEach((element) => {
+    element.addEventListener("change", (event) => {
+      const [channel, key] = event.target.dataset.config.split(":");
+      const value =
+        event.target.type === "checkbox"
+          ? event.target.checked
+          : event.target.type === "number"
+            ? Number(event.target.value)
+            : event.target.value;
+      handlers.onSaveConfig?.(Number(channel), key, value);
     });
   });
 }

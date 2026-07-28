@@ -10,6 +10,7 @@ import {
   saveChannelContact,
   saveChannelEnabled,
   saveChannelName,
+  saveConfigParameter,
 } from "./api.js";
 import { sourceChannelOptions } from "./module-pages/base.js";
 import {
@@ -541,6 +542,21 @@ class VelbusPanel extends HTMLElement {
           );
           await this._loadModulePage(this._moduleAddress);
           await this._refreshActions();
+        });
+      },
+      onSaveConfig: async (channel, key, value) => {
+        if (this._modulePageBusy()) {
+          return;
+        }
+        await this._withModuleBusy(async () => {
+          await saveConfigParameter(
+            this._callWs,
+            this._moduleAddress,
+            channel,
+            key,
+            value
+          );
+          await this._loadModulePage(this._moduleAddress);
         });
       },
       onSaveChannelContact: async (channel, value) => {

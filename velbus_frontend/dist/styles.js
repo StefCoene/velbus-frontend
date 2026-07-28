@@ -201,18 +201,27 @@ export const PANEL_STYLES = `
     outline: none;
   }
   .modules-table .module-name-cell { font-weight: 500; white-space: normal; }
-  .badge {
-    display: inline-block;
-    margin-left: 6px;
-    padding: 1px 6px;
-    border-radius: 10px;
-    font-size: 0.75rem;
-    white-space: nowrap;
+  .modules-table th { padding: 0; }
+  button.sort-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    padding: 8px;
+    border-radius: 0;
+    background: transparent;
+    color: var(--secondary-text-color, #727272);
+    font-size: inherit;
+    font-weight: 600;
+    text-align: left;
   }
-  .badge-warning {
-    background: var(--warning-color, #f57c00);
-    color: var(--text-primary-color, #fff);
-  }
+  th.numeric button.sort-header { justify-content: flex-end; }
+  button.sort-header:hover { color: var(--primary-text-color, #212121); }
+  button.sort-header.active { color: var(--primary-color, #03a9f4); }
+  .sort-arrow { font-size: 0.7rem; line-height: 1; }
+  .status { margin-left: 6px; font-weight: 700; }
+  .status-ok { color: var(--success-color, #43a047); }
+  .status-bad { color: var(--error-color, #db4437); }
   button {
     padding: 8px 12px;
     border-radius: 8px;

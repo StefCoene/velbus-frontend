@@ -17,6 +17,7 @@ import {
   resolveModulePageType,
 } from "./module-pages/registry.js";
 import {
+  DEFAULT_MODULE_SORT,
   DEFAULT_MODULE_VIEW,
   MODULE_VIEWS,
   bindModulesList,
@@ -37,6 +38,7 @@ class VelbusPanel extends HTMLElement {
     this._advancedMode = false;
     this._modules = [];
     this._modulesView = this._readStoredModulesView();
+    this._modulesSort = { ...DEFAULT_MODULE_SORT };
     this._moduleAddress = null;
     this._moduleData = null;
     this._modulePage = null;
@@ -115,6 +117,17 @@ class VelbusPanel extends HTMLElement {
     } catch (_error) {
       // remembering the choice is a convenience, not a requirement
     }
+    this._render();
+  }
+
+  _setModulesSort(column) {
+    this._modulesSort =
+      this._modulesSort.column === column
+        ? {
+            column,
+            direction: this._modulesSort.direction === "asc" ? "desc" : "asc",
+          }
+        : { column, direction: "asc" };
     this._render();
   }
 
@@ -400,6 +413,7 @@ class VelbusPanel extends HTMLElement {
       return renderModulesList({
         modules: this._modules,
         view: this._modulesView,
+        sort: this._modulesSort,
       });
     }
     if (!this._modulePage) {
@@ -427,6 +441,9 @@ class VelbusPanel extends HTMLElement {
         },
         onChangeView: (view) => {
           this._setModulesView(view);
+        },
+        onSort: (column) => {
+          this._setModulesSort(column);
         },
       });
       return;

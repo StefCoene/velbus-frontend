@@ -4,7 +4,8 @@ import {
   findChannelEnable,
   findChannelNames,
   findContact,
-  formatSource,
+  formatSourceChannel,
+  formatSourceModule,
   isProgrammedSlot,
   sourceChannelOptions,
 } from "./base.js";
@@ -340,7 +341,7 @@ export function render(ctx) {
               ${loadingActions ? "<p>Loading actions…</p>" : ""}
               <table>
                 <thead>
-                  <tr><th>Slot</th><th>Source</th><th>Action</th><th></th></tr>
+                  <tr><th>Slot</th><th>Source</th><th>Channel</th><th>Action</th><th></th></tr>
                 </thead>
                 <tbody>
                   ${
@@ -351,7 +352,8 @@ export function render(ctx) {
                         <td>${slot.slot}</td>
                         <td title="${slot.source_address}:${
                               slot.source_channel ?? "?"
-                            }">${formatSource(slot)}</td>
+                            }">${formatSourceModule(slot)}</td>
+                        <td>${formatSourceChannel(slot)}</td>
                         <td>${slot.action_label || slot.action_key || ""}</td>
                         <td>${
                           editable

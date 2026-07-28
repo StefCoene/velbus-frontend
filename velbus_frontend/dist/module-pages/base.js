@@ -12,6 +12,21 @@ export function formatSource(slot) {
   return `${slot.source_address}:${slot.source_channel ?? "?"}`;
 }
 
+export function formatSourceModule(slot) {
+  return slot.source_module_name || `Address ${slot.source_address}`;
+}
+
+// The number stays visible next to the name: it is what the module itself
+// stores, and what you compare against when reading a table in VelbusLink.
+export function formatSourceChannel(slot) {
+  if (slot.source_channel == null) {
+    return "?";
+  }
+  return slot.source_channel_name
+    ? `${slot.source_channel}: ${slot.source_channel_name}`
+    : `${slot.source_channel}`;
+}
+
 export function sourceChannelOptions(modules, moduleAddress) {
   const module = getModule(modules, moduleAddress);
   if (!module?.channels) {

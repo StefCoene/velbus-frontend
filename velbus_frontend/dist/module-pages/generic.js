@@ -85,15 +85,22 @@ function settingRow(param, interactionsDisabled) {
   </label>`;
 }
 
-function renderSettings(config, interactionsDisabled) {
+function renderSettings(config, interactionsDisabled, sections, channels) {
   if (!config || !config.length) {
     return "";
   }
   // The backend names the group, so the panel follows the headings VelbusLink
-  // uses instead of inventing its own. Ungrouped settings come first.
+  // uses instead of inventing its own. What it leaves ungrouped is grouped by
+  // channel, because a setting like "Inhibit" exists once per channel and its
+  // label alone does not say which one it belongs to. Module wide settings
+  // carry channel 0 and stay at the top.
   const groups = new Map([[null, []]]);
   for (const param of config) {
-    const key = param.group || null;
+    const key =
+      param.group ||
+      (param.channel
+        ? numberedChannelLabel(param.channel, sections, channels)
+        : null);
     if (!groups.has(key)) {
       groups.set(key, []);
     }
@@ -268,7 +275,7 @@ export function render(ctx) {
           : ""
       }
     </section>
-    ${renderSettings(moduleData.config, interactionsDisabled)}
+    ${renderSettings(moduleData.config, interactionsDisabled, sections, channels)}
     ${
       actionTable
         ? `<div class="module-layout">

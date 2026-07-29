@@ -45,11 +45,23 @@ export function sourceChannelOptions(modules, moduleAddress, selected) {
   return Object.entries(module.channels)
     .sort(([left], [right]) => Number(left) - Number(right))
     .map(([channel, info]) => {
-      const label = info.name || `Channel ${channel}`;
+      const label = info.name ? `${channel}. ${info.name}` : `Channel ${channel}`;
       const isSelected = Number(channel) === Number(selected) ? " selected" : "";
       return `<option value="${channel}"${isSelected}>${label}</option>`;
     })
     .join("");
+}
+
+// A module numbers its channels through, but everything above channel eight
+// lives on a subaddress and is numbered from one again there. The action table
+// stores what the bus uses, so a channel picked from the list has to be
+// translated back before it is written.
+export function busLocation(modules, moduleAddress, channel) {
+  const info = getModule(modules, moduleAddress)?.channels?.[String(channel)];
+  return {
+    address: info?.bus_address ?? moduleAddress,
+    channel: info?.bus_channel ?? channel,
+  };
 }
 
 export function channelLabel(channel, sections, liveChannels) {
@@ -58,6 +70,14 @@ export function channelLabel(channel, sections, liveChannels) {
   ).find((entry) => entry.channel === channel);
   const live = liveChannels[String(channel)] || {};
   return live.name || channelMeta?.name || `Channel ${channel}`;
+}
+
+// The channel list leads with the number, so a name can be matched against the
+// numbering VelbusLink and the action tables use. An unnamed channel already
+// reads as "Channel 9" and is left alone.
+export function numberedChannelLabel(channel, sections, liveChannels) {
+  const label = channelLabel(channel, sections, liveChannels);
+  return label === `Channel ${channel}` ? label : `${channel}. ${label}`;
 }
 
 export function findActionTable(sections) {

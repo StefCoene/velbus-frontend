@@ -12,7 +12,7 @@ import {
   saveChannelName,
   saveConfigParameter,
 } from "./api.js";
-import { sourceChannelOptions } from "./module-pages/base.js";
+import { busLocation, sourceChannelOptions } from "./module-pages/base.js";
 import {
   loadModulePage,
   resolveModulePageType,
@@ -481,7 +481,11 @@ class VelbusPanel extends HTMLElement {
         this._editingSlot =
           this._actionSlots.find((item) => item.slot === slot) ?? null;
         // Start on the module the slot points at, not on the first in the list.
-        this._sourceModuleAddress = this._editingSlot?.source_address ?? null;
+        // A slot on a subaddress resolves to the module's primary address.
+        this._sourceModuleAddress =
+          this._editingSlot?.source_module_address ??
+          this._editingSlot?.source_address ??
+          null;
         this._showAddActionDialog = true;
         this._render();
       },
@@ -504,14 +508,17 @@ class VelbusPanel extends HTMLElement {
         if (!sourceAddress || !sourceChannel || !action || this._modulePageBusy()) {
           return;
         }
+        // The select lists the module's own channel numbering; the action
+        // table stores the address and channel the bus uses.
+        const source = busLocation(this._modules, sourceAddress, sourceChannel);
         await this._withModuleBusy(async () => {
           const editing = this._editingSlot;
           await programAction(
             this._callWs,
             this._moduleAddress,
             this._actionChannel,
-            sourceAddress,
-            sourceChannel,
+            source.address,
+            source.channel,
             action,
             editing?.slot,
             // Keep the timings the slot already had; the dialog does not offer

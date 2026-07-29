@@ -7,6 +7,7 @@ import {
   formatSourceChannel,
   formatSourceModule,
   isProgrammedSlot,
+  numberedChannelLabel,
   sourceChannelOptions,
   sourceTooltip,
 } from "./base.js";
@@ -135,8 +136,12 @@ function renderAddActionDialog(ctx) {
   }
   const editable = canEdit(advancedMode, interactionsDisabled);
   // When editing, the dialog starts on the module the slot already points at.
+  // That is its primary address: a slot pointing at a subaddress belongs to the
+  // same module, which is what the list is keyed on.
   const sourceAddress =
-    sourceModuleAddress ?? editingSlot?.source_address ??
+    sourceModuleAddress ??
+    editingSlot?.source_module_address ??
+    editingSlot?.source_address ??
     (modules.length ? modules[0].address : null);
   const noun = actionTable.kind === "input" ? "input action" : "action";
   return `
@@ -165,7 +170,7 @@ function renderAddActionDialog(ctx) {
             ${sourceChannelOptions(
               modules,
               sourceAddress,
-              editingSlot?.source_channel
+              editingSlot?.source_module_channel ?? editingSlot?.source_channel
             )}
           </select>
         </label>
@@ -272,7 +277,7 @@ export function render(ctx) {
               <ul class="channel-list">
                 ${actionTable.channels
                   .map((channel) => {
-                    const label = channelLabel(channel, sections, channels);
+                    const label = numberedChannelLabel(channel, sections, channels);
                     const isActive = channel === actionChannel;
                     const live = channels[String(channel)] || {};
                     const disabled = live.enabled === false;

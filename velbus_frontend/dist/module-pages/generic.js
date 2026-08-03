@@ -5,6 +5,7 @@ import {
   findChannelNames,
   findContact,
   formatSourceChannel,
+  actionTimeSummary,
   formatSourceModule,
   isProgrammedSlot,
   numberedChannelLabel,
@@ -128,6 +129,40 @@ function renderSettings(config, interactionsDisabled, sections, channels) {
     </section>`;
 }
 
+// Up to three time fields, one per time parameter the chosen action takes.
+// Which ones apply changes with the action, so all three are rendered and the
+// dialog shows or hides them; that keeps a value the user already picked when
+// they browse through the action list.
+function renderActionTimes(actionTable, editingSlot, editable) {
+  const options = actionTable.time_options || [];
+  if (!options.length) {
+    return "";
+  }
+  const current = [editingSlot?.time1, editingSlot?.time2, editingSlot?.time3];
+  return `<div id="action-times">
+    ${[0, 1, 2]
+      .map((index) => {
+        // A new action starts at the shortest time rather than at the 0xFF an
+        // empty slot holds, which the module reads as "never times out".
+        const selected = current[index] ?? 0;
+        return `<label class="action-time" data-time-index="${index}" hidden>
+          <span></span>
+          <select data-time-select="${index}" ${editable ? "" : "disabled"}>
+            ${options
+              .map(
+                (option) =>
+                  `<option value="${option.value}"${
+                    option.value === selected ? " selected" : ""
+                  }>${escapeAttr(option.label)}</option>`
+              )
+              .join("")}
+          </select>
+        </label>`;
+      })
+      .join("")}
+  </div>`;
+}
+
 function renderAddActionDialog(ctx) {
   const {
     showAddActionDialog,
@@ -186,13 +221,18 @@ function renderAddActionDialog(ctx) {
             ${actionTable.actions
               .map(
                 (action) =>
-                  `<option value="${action.key}"${
+                  `<option value="${action.key}" data-times="${
+                    action.times || 0
+                  }" data-time-labels="${escapeAttr(
+                    (action.time_labels || []).join("|")
+                  )}"${
                     action.key === editingSlot?.action_key ? " selected" : ""
                   }>${action.label}</option>`
               )
               .join("")}
           </select>
         </label>
+        ${renderActionTimes(actionTable, editingSlot, editable)}
         <div class="dialog-actions">
           <button class="secondary" id="cancel-add-action">Cancel</button>
           <button id="confirm-add-action" ${
@@ -377,7 +417,7 @@ export function render(ctx) {
               ${loadingActions ? "<p>Loading actions…</p>" : ""}
               <table>
                 <thead>
-                  <tr><th>Slot</th><th>Source</th><th>Channel</th><th>Action</th><th></th></tr>
+                  <tr><th>Slot</th><th>Source</th><th>Channel</th><th>Action</th><th>Time</th><th></th></tr>
                 </thead>
                 <tbody>
                   ${
@@ -391,6 +431,7 @@ export function render(ctx) {
                             )}">${formatSourceModule(slot)}</td>
                         <td>${formatSourceChannel(slot)}</td>
                         <td>${slot.action_label || slot.action_key || ""}</td>
+                        <td>${escapeAttr(actionTimeSummary(actionTable, slot))}</td>
                         <td>${
                           editable
                             ? `<button class="link" data-edit-slot="${slot.slot}" ${
@@ -499,11 +540,36 @@ export function bind(root, handlers) {
     handlers.onSourceModuleChange(Number(event.target.value), root);
   });
 
+  const actionSelect = root.querySelector("#action-key");
+  const timeRows = [...root.querySelectorAll("[data-time-index]")];
+
+  // Which time fields apply is a property of the action, and the option
+  // carries it, so switching action needs no trip through the panel state.
+  const syncActionTimes = () => {
+    const option = actionSelect?.selectedOptions?.[0];
+    const count = Number(option?.dataset.times || 0);
+    const labels = (option?.dataset.timeLabels || "")
+      .split("|")
+      .filter(Boolean);
+    timeRows.forEach((row, index) => {
+      row.hidden = index >= count;
+      row.querySelector("span").textContent = labels[index] || `Time ${index + 1}`;
+    });
+  };
+  actionSelect?.addEventListener("change", syncActionTimes);
+  syncActionTimes();
+
   root.querySelector("#confirm-add-action")?.addEventListener("click", () => {
     const sourceAddress = Number(root.querySelector("#source-module")?.value);
     const sourceChannel = Number(root.querySelector("#source-channel")?.value);
-    const action = root.querySelector("#action-key")?.value;
-    handlers.onProgramAction(sourceAddress, sourceChannel, action);
+    const action = actionSelect?.value;
+    // A time the action does not use stays at what an empty slot holds.
+    const times = {};
+    timeRows.forEach((row, index) => {
+      const select = row.querySelector("[data-time-select]");
+      times[`time${index + 1}`] = row.hidden ? 0xff : Number(select.value);
+    });
+    handlers.onProgramAction(sourceAddress, sourceChannel, action, times);
   });
 
   root.querySelectorAll("[data-edit-slot]").forEach((element) => {

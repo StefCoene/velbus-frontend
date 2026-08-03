@@ -103,3 +103,29 @@ export function isProgrammedSlot(slot) {
   const source = slot.source_address;
   return source != null && source !== 0 && source !== 255;
 }
+
+export function findAction(actionTable, key) {
+  return (actionTable?.actions || []).find((action) => action.key === key);
+}
+
+// The byte a slot holds is an index into a fixed table of durations, so a
+// label only exists by looking it up in the options the backend sent.
+export function actionTimeLabel(actionTable, value) {
+  const option = (actionTable?.time_options || []).find(
+    (entry) => entry.value === value
+  );
+  return option ? option.label : `${value ?? ""}`;
+}
+
+// What a slot's times say, but only the ones its action actually uses: the
+// remaining bytes are leftovers the module ignores.
+export function actionTimeSummary(actionTable, slot) {
+  const action = findAction(actionTable, slot.action_key);
+  if (!action?.times) {
+    return "";
+  }
+  return [slot.time1, slot.time2, slot.time3]
+    .slice(0, action.times)
+    .map((value) => actionTimeLabel(actionTable, value))
+    .join(" / ");
+}

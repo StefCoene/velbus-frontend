@@ -504,7 +504,7 @@ class VelbusPanel extends HTMLElement {
           );
         }
       },
-      onProgramAction: async (sourceAddress, sourceChannel, action) => {
+      onProgramAction: async (sourceAddress, sourceChannel, action, times) => {
         if (!sourceAddress || !sourceChannel || !action || this._modulePageBusy()) {
           return;
         }
@@ -521,15 +521,7 @@ class VelbusPanel extends HTMLElement {
             source.channel,
             action,
             editing?.slot,
-            // Keep the timings the slot already had; the dialog does not offer
-            // them, so rewriting the slot must not silently drop them.
-            editing
-              ? {
-                  time1: editing.time1,
-                  time2: editing.time2,
-                  time3: editing.time3,
-                }
-              : null
+            times
           );
           this._showAddActionDialog = false;
           this._editingSlot = null;

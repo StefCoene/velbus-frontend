@@ -172,6 +172,7 @@ function renderAddActionDialog(ctx) {
     interactionsDisabled,
     sourceModuleAddress,
     editingSlot,
+    self,
   } = ctx;
   if (!showAddActionDialog || !actionTable) {
     return "";
@@ -212,7 +213,8 @@ function renderAddActionDialog(ctx) {
             ${sourceChannelOptions(
               modules,
               sourceAddress,
-              editingSlot?.source_module_channel ?? editingSlot?.source_channel
+              editingSlot?.source_module_channel ?? editingSlot?.source_channel,
+              self
             )}
           </select>
         </label>
@@ -293,6 +295,7 @@ export function render(ctx) {
     interactionsDisabled,
     sourceModuleAddress,
     editingSlot,
+    self: { address: moduleData.address, channel: actionChannel },
   };
 
   return `

@@ -37,7 +37,10 @@ export function formatSourceChannel(slot) {
     : `${slot.source_channel}`;
 }
 
-export function sourceChannelOptions(modules, moduleAddress, selected) {
+// `self` is the channel being programmed, as {address, channel}. It is offered
+// but not selectable: a channel that triggers itself feeds its own output back
+// into its input, and seeing it greyed out says more than leaving it out.
+export function sourceChannelOptions(modules, moduleAddress, selected, self) {
   const module = getModule(modules, moduleAddress);
   if (!module?.channels) {
     return "";
@@ -46,8 +49,15 @@ export function sourceChannelOptions(modules, moduleAddress, selected) {
     .sort(([left], [right]) => Number(left) - Number(right))
     .map(([channel, info]) => {
       const label = info.name ? `${channel}. ${info.name}` : `Channel ${channel}`;
-      const isSelected = Number(channel) === Number(selected) ? " selected" : "";
-      return `<option value="${channel}"${isSelected}>${label}</option>`;
+      const isSelf =
+        self != null &&
+        Number(moduleAddress) === Number(self.address) &&
+        Number(channel) === Number(self.channel);
+      const isSelected =
+        !isSelf && Number(channel) === Number(selected) ? " selected" : "";
+      return `<option value="${channel}"${isSelected}${
+        isSelf ? " disabled" : ""
+      }>${label}${isSelf ? " — this channel" : ""}</option>`;
     })
     .join("");
 }

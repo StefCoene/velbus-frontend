@@ -500,12 +500,21 @@ class VelbusPanel extends HTMLElement {
         if (channelSelect) {
           channelSelect.innerHTML = sourceChannelOptions(
             this._modules,
-            address
+            address,
+            null,
+            { address: this._moduleAddress, channel: this._actionChannel }
           );
         }
       },
       onProgramAction: async (sourceAddress, sourceChannel, action, times) => {
         if (!sourceAddress || !sourceChannel || !action || this._modulePageBusy()) {
+          return;
+        }
+        // The dialog greys this out, but a disabled option is only a hint.
+        if (
+          sourceAddress === this._moduleAddress &&
+          sourceChannel === this._actionChannel
+        ) {
           return;
         }
         // The select lists the module's own channel numbering; the action

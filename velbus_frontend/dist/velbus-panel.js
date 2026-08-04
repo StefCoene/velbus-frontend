@@ -27,6 +27,26 @@ import {
 
 const MODULE_VIEW_STORAGE_KEY = "velbus-panel:modules-view";
 
+// Home Assistant rejects a websocket call with a plain {code, message} object
+// rather than an Error, so String() on it yields "[object Object]" and throws
+// away the one part that says what went wrong.
+function errorText(error) {
+  if (error == null) {
+    return "Unknown error";
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  if (error.message) {
+    return error.code ? `${error.message} (${error.code})` : `${error.message}`;
+  }
+  if (error.code) {
+    return `${error.code}`;
+  }
+  const text = String(error);
+  return text === "[object Object]" ? JSON.stringify(error) : text;
+}
+
 class VelbusPanel extends HTMLElement {
   constructor() {
     super();
@@ -219,7 +239,7 @@ class VelbusPanel extends HTMLElement {
       await this._refreshModules();
       await this._onRouteChange();
     } catch (error) {
-      this._error = String(error);
+      this._error = errorText(error);
       this._render();
     }
   }
@@ -268,7 +288,7 @@ class VelbusPanel extends HTMLElement {
         this._actionChannel = actionSection.channels[0];
       }
     } catch (error) {
-      this._error = String(error);
+      this._error = errorText(error);
       this._moduleData = null;
       this._modulePage = null;
     }
@@ -295,7 +315,7 @@ class VelbusPanel extends HTMLElement {
         this._actionChannel
       );
     } catch (error) {
-      this._error = String(error);
+      this._error = errorText(error);
       this._actionSlots = [];
     }
     this._loadingActions = false;

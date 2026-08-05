@@ -229,6 +229,40 @@ export const PANEL_STYLES = `
     font-size: 0.95rem;
     color: var(--secondary-text-color, #727272);
   }
+  .menu-anchor { position: relative; }
+  .menu-button {
+    width: auto;
+    padding: 4px 10px;
+    font-size: 1.25rem;
+    line-height: 1.2;
+  }
+  .menu-backdrop { position: fixed; inset: 0; z-index: 4; }
+  .menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 5;
+    min-width: 200px;
+    padding: 4px;
+    background: var(--card-background-color, #fff);
+    border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+    border-radius: 12px;
+    box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0, 0, 0, 0.2));
+  }
+  .menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    margin: 0;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    color: var(--primary-text-color, #212121);
+  }
+  .menu button:hover:not(:disabled),
+  .menu button:focus-visible {
+    background: var(--secondary-background-color, rgba(0, 0, 0, 0.06));
+  }
   .channel-detail {
     flex: 1 1 0;
     min-width: 0;

@@ -92,6 +92,8 @@ class VelbusPanel extends HTMLElement {
     this._actionProgress = null;
     this._actionError = null;
     this._actionBusy = false;
+    this._moduleMenuOpen = false;
+    this._showSettings = false;
   }
 
   set hass(hass) {
@@ -325,6 +327,8 @@ class VelbusPanel extends HTMLElement {
     this._error = null;
     this._actionSlots = [];
     this._showAddActionDialog = false;
+    this._moduleMenuOpen = false;
+    this._showSettings = false;
     this._render();
     try {
       this._moduleData = await loadModule(this._callWs, address);
@@ -583,6 +587,8 @@ class VelbusPanel extends HTMLElement {
       actionError: this._actionError,
       triggers: this._channelTriggers(),
       triggerCoverage: this._triggerCoverage(),
+      menuOpen: this._moduleMenuOpen,
+      showSettings: this._showSettings,
     });
   }
 
@@ -714,8 +720,23 @@ class VelbusPanel extends HTMLElement {
         this._actionChannel = channel;
         await this._refreshActions();
       },
+      onToggleMenu: () => {
+        this._moduleMenuOpen = !this._moduleMenuOpen;
+        this._render();
+      },
+      onCloseMenu: () => {
+        this._moduleMenuOpen = false;
+        this._render();
+      },
+      onToggleSettings: () => {
+        this._showSettings = !this._showSettings;
+        this._moduleMenuOpen = false;
+        this._render();
+      },
       onScanModuleActions: async () => {
+        this._moduleMenuOpen = false;
         if (this._actionBusy || this._modulePageBusy()) {
+          this._render();
           return;
         }
         const address = this._moduleAddress;
@@ -746,7 +767,9 @@ class VelbusPanel extends HTMLElement {
         await this._refreshActions({ refresh: false });
       },
       onShowAddAction: () => {
+        this._moduleMenuOpen = false;
         if (this._modulePageBusy()) {
+          this._render();
           return;
         }
         this._editingSlot = null;

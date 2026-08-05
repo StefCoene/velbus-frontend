@@ -351,6 +351,68 @@ function renderTriggersByChannel(ctx) {
   </section>`;
 }
 
+// Everything that acts on the module as a whole, in one place. These used to
+// be buttons beside the back link, which put them in the same row as -- and at
+// the same weight as -- leaving the page.
+function renderModuleMenu(ctx) {
+  const {
+    menuOpen,
+    showSettings,
+    hasSettings,
+    actionTable,
+    editable,
+    interactionsDisabled,
+    actionBusy,
+  } = ctx;
+  const items = [];
+  if (hasSettings) {
+    items.push({
+      id: "menu-settings",
+      label: showSettings ? "Hide settings" : "Settings",
+      disabled: false,
+    });
+  }
+  if (actionTable) {
+    items.push({
+      id: "menu-scan-actions",
+      label: actionBusy ? "Reading…" : "Read all actions",
+      disabled: interactionsDisabled || actionBusy,
+    });
+    items.push({
+      id: "menu-add-action",
+      label: actionTable.kind === "input" ? "Add input action" : "Add action",
+      disabled: !editable,
+    });
+  }
+  if (!items.length) {
+    return "";
+  }
+  return `<div class="menu-anchor">
+    <button
+      id="module-menu"
+      class="menu-button"
+      aria-haspopup="true"
+      aria-expanded="${menuOpen ? "true" : "false"}"
+      title="Module actions"
+    >⋮</button>
+    ${
+      menuOpen
+        ? `<div class="menu-backdrop" id="module-menu-backdrop"></div>
+           <div class="menu" role="menu">
+             ${items
+               .map(
+                 (item) =>
+                   `<button type="button" role="menuitem" id="${item.id}" ${
+                     item.disabled ? "disabled" : ""
+                   }>${escapeAttr(item.label)}</button>`
+               )
+               .join("")}
+           </div>`
+        : ""
+    }
+  </div>`;
+}
+
 export function render(ctx) {
   const {
     moduleData,
@@ -365,6 +427,8 @@ export function render(ctx) {
     editingSlot,
     triggers,
     triggerCoverage,
+    menuOpen,
+    showSettings,
     actionBusy,
     actionProgress,
     actionError,
@@ -413,18 +477,15 @@ export function render(ctx) {
     <section class="card header">
       <div class="header-row">
         <button class="link back" id="back-button">← Modules</button>
-        ${
-          actionTable
-            ? `<button id="scan-module-actions" ${
-                interactionsDisabled || actionBusy ? "disabled" : ""
-              }>${
-                actionBusy ? "Reading…" : "Read all actions"
-              }</button>
-              <button id="add-action" class="primary" ${
-                editable ? "" : "disabled"
-              }>Add action</button>`
-            : ""
-        }
+        ${renderModuleMenu({
+          menuOpen,
+          showSettings,
+          hasSettings: (moduleData.config || []).length > 0,
+          actionTable,
+          editable,
+          interactionsDisabled,
+          actionBusy,
+        })}
       </div>
       <h2>${moduleData.name}</h2>
       <p class="muted">${metaParts.join(" · ")}</p>
@@ -443,7 +504,11 @@ export function render(ctx) {
           : ""
       }
     </section>
-    ${renderSettings(moduleData.config, interactionsDisabled, sections, channels)}
+    ${
+      showSettings
+        ? renderSettings(moduleData.config, interactionsDisabled, sections, channels)
+        : ""
+    }
     ${
       actionTable
         ? `<div class="module-layout">
@@ -657,11 +722,25 @@ export function bind(root, handlers) {
     });
   });
 
-  root.querySelector("#add-action")?.addEventListener("click", () => {
+  root.querySelector("#module-menu")?.addEventListener("click", () => {
+    handlers.onToggleMenu();
+  });
+
+  root
+    .querySelector("#module-menu-backdrop")
+    ?.addEventListener("click", () => {
+      handlers.onCloseMenu();
+    });
+
+  root.querySelector("#menu-settings")?.addEventListener("click", () => {
+    handlers.onToggleSettings();
+  });
+
+  root.querySelector("#menu-add-action")?.addEventListener("click", () => {
     handlers.onShowAddAction();
   });
 
-  root.querySelector("#scan-module-actions")?.addEventListener("click", () => {
+  root.querySelector("#menu-scan-actions")?.addEventListener("click", () => {
     handlers.onScanModuleActions();
   });
 

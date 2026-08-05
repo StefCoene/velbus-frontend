@@ -364,17 +364,21 @@ class VelbusPanel extends HTMLElement {
       .map((action) => {
         const target = this._modules.find((item) => item.address === action.address);
         const sourceChannel = action.source_module_channel;
+        const sourceName =
+          action.source_channel_name || channels[String(sourceChannel)]?.name;
+        const targetName = target?.channels?.[String(action.channel)]?.name;
         return {
           sourceChannel,
-          sourceChannelName:
-            action.source_channel_name ||
-            channels[String(sourceChannel)]?.name ||
-            `Channel ${sourceChannel ?? "?"}`,
+          // Named the way a module is: the name for reading, the number in
+          // brackets for looking it up in the module itself.
+          sourceChannelName: sourceName
+            ? `${sourceName} (${sourceChannel})`
+            : `Channel ${sourceChannel ?? "?"}`,
           address: action.address,
           name: target?.name || `Module ${action.address}`,
-          channelName:
-            target?.channels?.[String(action.channel)]?.name ||
-            `Channel ${action.channel}`,
+          channelName: targetName
+            ? `${targetName} (${action.channel})`
+            : `Channel ${action.channel}`,
           action: action.action_label || action.action_key || "",
           slot: action.slot,
         };

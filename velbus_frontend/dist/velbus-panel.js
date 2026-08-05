@@ -1,13 +1,17 @@
 import { PANEL_STYLES } from "./styles.js";
 import {
+  clearActionCache,
   clearActionSlot,
   createApi,
+  createSubscriber,
   loadActions,
+  loadAllActions,
   loadBaseData,
   loadModule,
   loadModules,
   loadSharedConfig,
   saveSharedConfig,
+  scanActions,
   syncClock,
   programAction,
   saveChannelContact,
@@ -83,6 +87,11 @@ class VelbusPanel extends HTMLElement {
     this._sharedResults = {};
     this._sharedBusy = false;
     this._clockResult = null;
+    this._subscribe = undefined;
+    this._actionScan = null;
+    this._actionProgress = null;
+    this._actionError = null;
+    this._actionBusy = false;
   }
 
   set hass(hass) {
@@ -247,6 +256,7 @@ class VelbusPanel extends HTMLElement {
       return;
     }
     this._callWs = createApi(this._hass, this._configEntryId);
+    this._subscribe = createSubscriber(this._hass, this._configEntryId);
     try {
       const base = await loadBaseData(this._callWs);
       this._advancedMode = base.advanced_mode;
@@ -298,6 +308,9 @@ class VelbusPanel extends HTMLElement {
     this._render();
     try {
       this._sharedSettings = await loadSharedConfig(this._callWs);
+      // What is already known, which costs nothing; reading the rest is a
+      // button, not something a page load does behind the user's back.
+      this._actionScan = await loadAllActions(this._callWs);
     } catch (error) {
       this._error = errorText(error);
       this._sharedSettings = [];
@@ -481,6 +494,10 @@ class VelbusPanel extends HTMLElement {
         busy: this._sharedBusy,
         results: this._sharedResults,
         clockResult: this._clockResult,
+        actionScan: this._actionScan,
+        actionProgress: this._actionProgress,
+        actionError: this._actionError,
+        actionBusy: this._actionBusy,
       });
     }
     if (!this._modulePage) {
@@ -523,6 +540,46 @@ class VelbusPanel extends HTMLElement {
       bindSharedSettings(contentRoot, {
         onBack: () => {
           this._navigate("");
+        },
+        onScanActions: async (force) => {
+          if (this._actionBusy) {
+            return;
+          }
+          this._actionBusy = true;
+          this._actionError = null;
+          this._actionProgress = null;
+          this._render();
+          try {
+            this._actionScan = await scanActions(
+              this._subscribe,
+              { force },
+              (progress) => {
+                this._actionProgress = progress;
+                this._render();
+              }
+            );
+          } catch (error) {
+            this._actionError = errorText(error);
+          }
+          this._actionBusy = false;
+          this._actionProgress = null;
+          this._render();
+        },
+        onClearActionCache: async () => {
+          if (this._actionBusy) {
+            return;
+          }
+          this._actionBusy = true;
+          this._actionError = null;
+          this._render();
+          try {
+            await clearActionCache(this._callWs);
+            this._actionScan = await loadAllActions(this._callWs);
+          } catch (error) {
+            this._actionError = errorText(error);
+          }
+          this._actionBusy = false;
+          this._render();
         },
         onSyncClock: async () => {
           if (this._sharedBusy) {

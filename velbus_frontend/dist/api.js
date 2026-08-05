@@ -116,3 +116,67 @@ export async function saveSharedConfig(callWs, key, value, addresses) {
 export async function syncClock(callWs) {
   return callWs("velbus/config_panel/sync_clock", {});
 }
+
+export async function loadAllActions(callWs) {
+  return callWs("velbus/config_panel/actions/all", {});
+}
+
+export async function clearActionCache(callWs) {
+  const result = await callWs("velbus/config_panel/actions/clear_cache", {});
+  return result.cleared || [];
+}
+
+export function createSubscriber(hass, configEntryId) {
+  return function subscribe(type, extra, onEvent) {
+    return hass.connection.subscribeMessage(onEvent, {
+      type,
+      config_entry: configEntryId,
+      ...extra,
+    });
+  };
+}
+
+// Reading every action table is minutes of bus traffic, so the backend reports
+// as it goes instead of answering once. This turns that back into a promise
+// that settles on the last event, with the progress passed on meanwhile.
+export function scanActions(subscribe, { force = false } = {}, onProgress) {
+  return new Promise((resolve, reject) => {
+    let unsubscribe = null;
+    let settled = false;
+
+    const stop = () => {
+      settled = true;
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+      }
+    };
+
+    subscribe("velbus/config_panel/actions/scan", { force }, (event) => {
+      if (event.type === "progress") {
+        onProgress?.(event);
+        return;
+      }
+      if (event.type === "error") {
+        stop();
+        reject(new Error(event.message));
+        return;
+      }
+      stop();
+      resolve(event);
+    }).then(
+      (unsub) => {
+        // The scan can be over before the subscription handle arrives.
+        if (settled) {
+          unsub();
+        } else {
+          unsubscribe = unsub;
+        }
+      },
+      (error) => {
+        settled = true;
+        reject(error);
+      }
+    );
+  });
+}

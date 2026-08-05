@@ -133,6 +133,61 @@ function renderActions(ctx) {
   </section>`;
 }
 
+function actionSummary(scan) {
+  if (!scan || !scan.modules.length) {
+    return "Nothing read yet.";
+  }
+  const oldest = Math.min(...scan.modules.map((module) => module.read_at || 0));
+  const when = oldest ? new Date(oldest * 1000).toLocaleString() : "unknown";
+  return `${scan.action_count} actions on ${scan.modules.length} modules, read ${when}.`;
+}
+
+// The action tables are the one thing here that is not a setting: they are read
+// rather than written, and reading them all takes minutes, so this card is
+// about what is known and how to refresh it.
+function renderActionCache(ctx) {
+  const { actionScan, actionProgress, actionError, actionBusy } = ctx;
+  return `<section class="card">
+    <h3>Action tables</h3>
+    <p class="muted">${escapeAttr(actionSummary(actionScan))}</p>
+    <p class="muted"><small>
+      Reading an action table costs about 60 ms per four bytes, so a full
+      installation takes a few minutes. What is read is kept across restarts;
+      programming done elsewhere, in VelbusLink for instance, only shows up
+      after a re-read.
+    </small></p>
+    <div class="rename-row">
+      <button type="button" class="primary" id="scan-actions" ${
+        actionBusy ? "disabled" : ""
+      }>Read what is missing</button>
+      <button type="button" id="rescan-actions" ${
+        actionBusy ? "disabled" : ""
+      }>Re-read everything</button>
+      <button type="button" id="clear-action-cache" ${
+        actionBusy ? "disabled" : ""
+      }>Forget</button>
+    </div>
+    ${
+      actionProgress
+        ? `<p class="muted">Reading ${escapeAttr(actionProgress.name)} (${
+            actionProgress.address
+          }) — ${actionProgress.done} of ${actionProgress.total}.</p>`
+        : ""
+    }
+    ${actionError ? `<p class="warning">${escapeAttr(actionError)}</p>` : ""}
+    ${
+      actionScan?.modules.some((module) => module.error)
+        ? `<p class="warning">${escapeAttr(
+            actionScan.modules
+              .filter((module) => module.error)
+              .map((module) => `${module.name} (${module.address}): ${module.error}`)
+              .join("; ")
+          )}</p>`
+        : ""
+    }
+  </section>`;
+}
+
 export function render(ctx) {
   const { settings, loading, busy, results } = ctx;
   if (loading) {
@@ -151,6 +206,7 @@ export function render(ctx) {
       </p>
     </section>
     ${renderActions(ctx)}
+    ${renderActionCache(ctx)}
     ${
       settings.length
         ? settings
@@ -167,6 +223,18 @@ export function bind(root, handlers) {
 
   root.querySelector("#sync-clock")?.addEventListener("click", () => {
     handlers.onSyncClock();
+  });
+
+  root.querySelector("#scan-actions")?.addEventListener("click", () => {
+    handlers.onScanActions(false);
+  });
+
+  root.querySelector("#rescan-actions")?.addEventListener("click", () => {
+    handlers.onScanActions(true);
+  });
+
+  root.querySelector("#clear-action-cache")?.addEventListener("click", () => {
+    handlers.onClearActionCache();
   });
 
   root.querySelectorAll("[data-apply]").forEach((button) => {

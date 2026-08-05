@@ -112,3 +112,7 @@ export async function saveSharedConfig(callWs, key, value, addresses) {
   });
   return result.results || [];
 }
+
+export async function syncClock(callWs) {
+  return callWs("velbus/config_panel/sync_clock", {});
+}

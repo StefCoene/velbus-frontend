@@ -8,6 +8,7 @@ import {
   loadModules,
   loadSharedConfig,
   saveSharedConfig,
+  syncClock,
   programAction,
   saveChannelContact,
   saveChannelEnabled,
@@ -81,6 +82,7 @@ class VelbusPanel extends HTMLElement {
     this._sharedSettings = [];
     this._sharedResults = {};
     this._sharedBusy = false;
+    this._clockResult = null;
   }
 
   set hass(hass) {
@@ -478,6 +480,7 @@ class VelbusPanel extends HTMLElement {
         loading: this._loading,
         busy: this._sharedBusy,
         results: this._sharedResults,
+        clockResult: this._clockResult,
       });
     }
     if (!this._modulePage) {
@@ -521,6 +524,25 @@ class VelbusPanel extends HTMLElement {
         onBack: () => {
           this._navigate("");
         },
+        onSyncClock: async () => {
+          if (this._sharedBusy) {
+            return;
+          }
+          this._sharedBusy = true;
+          this._clockResult = null;
+          this._render();
+          try {
+            await syncClock(this._callWs);
+            this._clockResult = {
+              at: new Date().toLocaleTimeString(),
+              error: null,
+            };
+          } catch (error) {
+            this._clockResult = { at: null, error: errorText(error) };
+          }
+          this._sharedBusy = false;
+          this._render();
+        },
         onApply: async (key, value) => {
           if (this._sharedBusy) {
             return;
@@ -544,6 +566,7 @@ class VelbusPanel extends HTMLElement {
             this._error = errorText(error);
           }
           this._sharedBusy = false;
+    this._clockResult = null;
           // Read back, so what the page shows is what the modules report
           // rather than what was asked for.
           await this._loadSharedSettings();

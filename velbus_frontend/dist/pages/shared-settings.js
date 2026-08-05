@@ -110,6 +110,29 @@ function renderSetting(setting, busy, result) {
   </section>`;
 }
 
+// Actions that go to the whole bus at once rather than to a setting on each
+// module. The clock is a broadcast: one message, every module picks it up.
+function renderActions(ctx) {
+  return `<section class="card">
+    <h3>Clock</h3>
+    <p class="muted">
+      Send the current Home Assistant time to every module on the bus.
+    </p>
+    <div class="rename-row">
+      <button type="button" class="primary" id="sync-clock" ${
+        ctx.busy ? "disabled" : ""
+      }>Sync clock</button>
+      ${
+        ctx.clockResult
+          ? ctx.clockResult.error
+            ? `<span class="warning">${escapeAttr(ctx.clockResult.error)}</span>`
+            : `<span class="muted">Sent at ${escapeAttr(ctx.clockResult.at)}.</span>`
+          : ""
+      }
+    </div>
+  </section>`;
+}
+
 export function render(ctx) {
   const { settings, loading, busy, results } = ctx;
   if (loading) {
@@ -127,6 +150,7 @@ export function render(ctx) {
         get the value.
       </p>
     </section>
+    ${renderActions(ctx)}
     ${
       settings.length
         ? settings
@@ -139,6 +163,10 @@ export function render(ctx) {
 export function bind(root, handlers) {
   root.querySelector("#back-to-modules")?.addEventListener("click", () => {
     handlers.onBack();
+  });
+
+  root.querySelector("#sync-clock")?.addEventListener("click", () => {
+    handlers.onSyncClock();
   });
 
   root.querySelectorAll("[data-apply]").forEach((button) => {

@@ -127,13 +127,18 @@ export async function clearActionCache(callWs) {
 }
 
 export function createSubscriber(hass, configEntryId) {
-  return function subscribe(type, extra, onEvent) {
+  function subscribe(type, extra, onEvent) {
     return hass.connection.subscribeMessage(onEvent, {
       type,
       config_entry: configEntryId,
       ...extra,
     });
-  };
+  }
+  // Carried along so a subscriber can also notice the connection going away,
+  // which is the one thing that never arrives as an event on the subscription
+  // itself.
+  subscribe.connection = hass.connection;
+  return subscribe;
 }
 
 // Reading every action table is minutes of bus traffic, so the backend reports
@@ -145,21 +150,41 @@ export function scanActions(
   onProgress
 ) {
   return new Promise((resolve, reject) => {
+    const connection = subscribe.connection;
     let unsubscribe = null;
     let settled = false;
 
     const stop = () => {
       settled = true;
+      connection?.removeEventListener?.("disconnected", onDisconnected);
       if (unsubscribe) {
         unsubscribe();
         unsubscribe = null;
       }
     };
 
+    // Home Assistant restarting, or the socket dropping, takes the scan with
+    // it and no further event is coming. Without this the caller waits for a
+    // result that can no longer arrive -- a progress bar frozen at whatever it
+    // last reached.
+    function onDisconnected() {
+      if (settled) {
+        return;
+      }
+      stop();
+      reject(new Error("Lost the connection to Home Assistant; the read stopped"));
+    }
+    connection?.addEventListener?.("disconnected", onDisconnected);
+
     const request = addresses ? { force, addresses } : { force };
     subscribe("velbus/config_panel/actions/scan", request, (event) => {
       if (event.type === "progress") {
-        onProgress?.(event);
+        // A caller that throws while drawing must not strand the read.
+        try {
+          onProgress?.(event);
+        } catch (error) {
+          console.error("Velbus: progress handler failed", error);
+        }
         return;
       }
       if (event.type === "error") {

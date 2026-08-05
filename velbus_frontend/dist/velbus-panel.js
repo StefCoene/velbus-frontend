@@ -6,6 +6,8 @@ import {
   loadBaseData,
   loadModule,
   loadModules,
+  loadSharedConfig,
+  saveSharedConfig,
   programAction,
   saveChannelContact,
   saveChannelEnabled,
@@ -24,6 +26,10 @@ import {
   bindModulesList,
   renderModulesList,
 } from "./pages/modules-list.js";
+import {
+  render as renderSharedSettings,
+  bind as bindSharedSettings,
+} from "./pages/shared-settings.js";
 
 const MODULE_VIEW_STORAGE_KEY = "velbus-panel:modules-view";
 
@@ -72,6 +78,9 @@ class VelbusPanel extends HTMLElement {
     this._loadingActions = false;
     this._moduleBusy = false;
     this._error = null;
+    this._sharedSettings = [];
+    this._sharedResults = {};
+    this._sharedBusy = false;
   }
 
   set hass(hass) {
@@ -179,6 +188,9 @@ class VelbusPanel extends HTMLElement {
     if (!path) {
       return { page: "list" };
     }
+    if (path.startsWith("all")) {
+      return { page: "all" };
+    }
     const match = path.match(/^module\/(\d+)/);
     if (match) {
       return { page: "module", address: Number(match[1]) };
@@ -263,11 +275,33 @@ class VelbusPanel extends HTMLElement {
       return;
     }
 
+    if (route.page === "all") {
+      this._moduleAddress = null;
+      this._moduleData = null;
+      this._modulePage = null;
+      await this._loadSharedSettings();
+      return;
+    }
+
     if (route.address !== this._moduleAddress || !this._moduleData) {
       await this._loadModulePage(route.address);
     } else {
       this._render();
     }
+  }
+
+  async _loadSharedSettings() {
+    this._loading = true;
+    this._error = null;
+    this._render();
+    try {
+      this._sharedSettings = await loadSharedConfig(this._callWs);
+    } catch (error) {
+      this._error = errorText(error);
+      this._sharedSettings = [];
+    }
+    this._loading = false;
+    this._render();
   }
 
   async _loadModulePage(address) {
@@ -438,6 +472,14 @@ class VelbusPanel extends HTMLElement {
         sort: this._modulesSort,
       });
     }
+    if (route.page === "all") {
+      return renderSharedSettings({
+        settings: this._sharedSettings,
+        loading: this._loading,
+        busy: this._sharedBusy,
+        results: this._sharedResults,
+      });
+    }
     if (!this._modulePage) {
       return "";
     }
@@ -467,6 +509,44 @@ class VelbusPanel extends HTMLElement {
         },
         onSort: (column) => {
           this._setModulesSort(column);
+        },
+        onShowAll: () => {
+          this._navigate("/all");
+        },
+      });
+      return;
+    }
+    if (route.page === "all") {
+      bindSharedSettings(contentRoot, {
+        onBack: () => {
+          this._navigate("");
+        },
+        onApply: async (key, value) => {
+          if (this._sharedBusy) {
+            return;
+          }
+          const setting = this._sharedSettings.find((item) => item.key === key);
+          this._sharedBusy = true;
+          this._render();
+          try {
+            this._sharedResults = {
+              ...this._sharedResults,
+              [key]: {
+                results: await saveSharedConfig(
+                  this._callWs,
+                  key,
+                  value,
+                  setting.modules.map((module) => module.address)
+                ),
+              },
+            };
+          } catch (error) {
+            this._error = errorText(error);
+          }
+          this._sharedBusy = false;
+          // Read back, so what the page shows is what the modules report
+          // rather than what was asked for.
+          await this._loadSharedSettings();
         },
       });
       return;

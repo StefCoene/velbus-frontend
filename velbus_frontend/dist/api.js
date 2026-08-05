@@ -96,3 +96,19 @@ export async function clearActionSlot(callWs, address, channel, slot) {
     slot,
   });
 }
+
+export async function loadSharedConfig(callWs) {
+  const result = await callWs("velbus/config_panel/config/shared", {});
+  return result.settings || [];
+}
+
+export async function saveSharedConfig(callWs, key, value, addresses) {
+  const result = await callWs("velbus/config_panel/config/set_shared", {
+    key,
+    value,
+    // The modules the page listed, so one that appeared since is not written
+    // without the user having seen it.
+    addresses,
+  });
+  return result.results || [];
+}

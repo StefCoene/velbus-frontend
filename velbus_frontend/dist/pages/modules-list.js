@@ -252,7 +252,12 @@ export function renderModulesList(ctx) {
     <section class="modules-section">
       <div class="section-header">
         <h2>Modules</h2>
-        ${modules.length ? renderViewSwitch(view) : ""}
+        ${
+          modules.length
+            ? `${renderViewSwitch(view)}
+               <button type="button" class="link" id="show-all-modules">All modules…</button>`
+            : ""
+        }
       </div>
       ${
         modules.length
@@ -265,6 +270,10 @@ export function renderModulesList(ctx) {
 }
 
 export function bindModulesList(root, handlers) {
+  root.querySelector("#show-all-modules")?.addEventListener("click", () => {
+    handlers.onShowAll?.();
+  });
+
   root.querySelectorAll("[data-address]").forEach((element) => {
     element.addEventListener("click", () => {
       handlers.onSelect(Number(element.dataset.address));

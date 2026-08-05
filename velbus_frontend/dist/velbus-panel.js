@@ -344,11 +344,66 @@ class VelbusPanel extends HTMLElement {
     this._loading = false;
     this._render();
     if (this._moduleData) {
+      await this._refreshActionScan();
       await this._refreshActions();
     }
   }
 
-  async _refreshActions() {
+  // The reverse view: a slot lives in the module that reacts, so what a push
+  // button or a PIR does is only visible once the modules listening to it have
+  // been read. The scan payload names both ends of every action, so this is a
+  // filter over it rather than another read.
+  _channelTriggers() {
+    if (!this._actionScan || !this._moduleData) {
+      return null;
+    }
+    const address = this._moduleData.address;
+    const channels = this._moduleData.channels || {};
+    return this._actionScan.actions
+      .filter((action) => action.source_module_address === address)
+      .map((action) => {
+        const target = this._modules.find((item) => item.address === action.address);
+        const sourceChannel = action.source_module_channel;
+        return {
+          sourceChannel,
+          sourceChannelName:
+            action.source_channel_name ||
+            channels[String(sourceChannel)]?.name ||
+            `Channel ${sourceChannel ?? "?"}`,
+          address: action.address,
+          name: target?.name || `Module ${action.address}`,
+          channelName:
+            target?.channels?.[String(action.channel)]?.name ||
+            `Channel ${action.channel}`,
+          action: action.action_label || action.action_key || "",
+          slot: action.slot,
+        };
+      })
+      .sort(
+        (left, right) =>
+          (left.sourceChannel ?? 0) - (right.sourceChannel ?? 0) ||
+          left.address - right.address ||
+          left.slot - right.slot
+      );
+  }
+
+  _triggerCoverage() {
+    return {
+      scanned: this._actionScan?.modules.length ?? 0,
+      total: this._modules.length,
+    };
+  }
+
+  // Costs nothing: it returns what is already in memory and never reads the bus.
+  async _refreshActionScan() {
+    try {
+      this._actionScan = await loadAllActions(this._callWs);
+    } catch (error) {
+      this._actionError = errorText(error);
+    }
+  }
+
+  async _refreshActions({ refresh = true } = {}) {
     const actionSection = (this._moduleData?.schema?.sections || []).find(
       (section) => section.type === "action_table"
     );
@@ -361,13 +416,15 @@ class VelbusPanel extends HTMLElement {
       this._actionSlots = await loadActions(
         this._callWs,
         this._moduleAddress,
-        this._actionChannel
+        this._actionChannel,
+        refresh
       );
     } catch (error) {
       this._error = errorText(error);
       this._actionSlots = [];
     }
     this._loadingActions = false;
+    await this._refreshActionScan();
     this._render();
   }
 
@@ -514,6 +571,11 @@ class VelbusPanel extends HTMLElement {
       showAddActionDialog: this._showAddActionDialog,
       sourceModuleAddress: this._sourceModuleAddress,
       editingSlot: this._editingSlot,
+      actionBusy: this._actionBusy,
+      actionProgress: this._actionProgress,
+      actionError: this._actionError,
+      triggers: this._channelTriggers(),
+      triggerCoverage: this._triggerCoverage(),
     });
   }
 
@@ -644,6 +706,37 @@ class VelbusPanel extends HTMLElement {
         }
         this._actionChannel = channel;
         await this._refreshActions();
+      },
+      onScanModuleActions: async () => {
+        if (this._actionBusy || this._modulePageBusy()) {
+          return;
+        }
+        const address = this._moduleAddress;
+        this._actionBusy = true;
+        this._actionError = null;
+        this._actionProgress = null;
+        this._render();
+        try {
+          // Force, because somebody looking at this page has just changed
+          // something on it or in VelbusLink; the cheap read is the button on
+          // the all-modules page.
+          await scanActions(
+            this._subscribe,
+            { force: true, addresses: [address] },
+            (progress) => {
+              this._actionProgress = progress;
+              this._render();
+            }
+          );
+        } catch (error) {
+          this._actionError = errorText(error);
+        }
+        this._actionBusy = false;
+        this._actionProgress = null;
+        this._render();
+        // The scan already read this channel, so take it from memory rather
+        // than sending the same requests again.
+        await this._refreshActions({ refresh: false });
       },
       onShowAddAction: () => {
         if (this._modulePageBusy()) {

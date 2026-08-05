@@ -21,11 +21,11 @@ export async function loadModule(callWs, address) {
   return callWs("velbus/config_panel/module/get", { address });
 }
 
-export async function loadActions(callWs, address, channel) {
+export async function loadActions(callWs, address, channel, refresh = true) {
   const result = await callWs("velbus/config_panel/module/actions/get", {
     address,
     channel,
-    refresh: true,
+    refresh,
   });
   return result.slots || [];
 }
@@ -139,7 +139,11 @@ export function createSubscriber(hass, configEntryId) {
 // Reading every action table is minutes of bus traffic, so the backend reports
 // as it goes instead of answering once. This turns that back into a promise
 // that settles on the last event, with the progress passed on meanwhile.
-export function scanActions(subscribe, { force = false } = {}, onProgress) {
+export function scanActions(
+  subscribe,
+  { force = false, addresses = null } = {},
+  onProgress
+) {
   return new Promise((resolve, reject) => {
     let unsubscribe = null;
     let settled = false;
@@ -152,7 +156,8 @@ export function scanActions(subscribe, { force = false } = {}, onProgress) {
       }
     };
 
-    subscribe("velbus/config_panel/actions/scan", { force }, (event) => {
+    const request = addresses ? { force, addresses } : { force };
+    subscribe("velbus/config_panel/actions/scan", request, (event) => {
       if (event.type === "progress") {
         onProgress?.(event);
         return;

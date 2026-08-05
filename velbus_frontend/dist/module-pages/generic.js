@@ -245,6 +245,60 @@ function renderAddActionDialog(ctx) {
     </div>`;
 }
 
+// The other direction. A slot lives in the module that reacts, so a channel
+// that only sends -- a push button, a PIR -- has nothing to show about itself
+// until the modules that listen to it have been read. That is what makes this
+// worth a card of its own rather than a column in the table above.
+function renderTriggers({ triggers, triggerCoverage }) {
+  if (!triggers) {
+    return "";
+  }
+  const scanned = triggerCoverage?.scanned ?? 0;
+  const total = triggerCoverage?.total ?? 0;
+  const complete = total > 0 && scanned >= total;
+  return `<section class="card">
+    <h3>What this module triggers</h3>
+    ${
+      triggers.length
+        ? `<table>
+            <thead>
+              <tr>
+                <th>From channel</th><th>Module</th><th>Channel</th>
+                <th>Action</th><th>Slot</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${triggers
+                .map(
+                  (item) => `<tr>
+                    <td>${escapeAttr(item.sourceChannelName)}</td>
+                    <td>${escapeAttr(item.name)} (${item.address})</td>
+                    <td>${escapeAttr(item.channelName)}</td>
+                    <td>${escapeAttr(item.action)}</td>
+                    <td>${item.slot}</td>
+                  </tr>`
+                )
+                .join("")}
+            </tbody>
+          </table>`
+        : `<p class="muted">${
+            complete
+              ? "Nothing on the bus reacts to this module."
+              : "No action found yet in what has been read."
+          }</p>`
+    }
+    ${
+      complete
+        ? ""
+        : `<p class="muted"><small>
+            Read ${scanned} of ${total} modules. Only modules whose action
+            tables have been read can appear here — use "Read all actions" on
+            the All modules page to complete the picture.
+          </small></p>`
+    }
+  </section>`;
+}
+
 export function render(ctx) {
   const {
     moduleData,
@@ -257,6 +311,11 @@ export function render(ctx) {
     showAddActionDialog,
     sourceModuleAddress,
     editingSlot,
+    triggers,
+    triggerCoverage,
+    actionBusy,
+    actionProgress,
+    actionError,
   } = ctx;
 
   if (!moduleData) {
@@ -304,7 +363,12 @@ export function render(ctx) {
         <button class="link back" id="back-button">← Modules</button>
         ${
           actionTable
-            ? `<button id="add-action" class="primary" ${
+            ? `<button id="scan-module-actions" ${
+                interactionsDisabled || actionBusy ? "disabled" : ""
+              }>${
+                actionBusy ? "Reading…" : "Read all actions"
+              }</button>
+              <button id="add-action" class="primary" ${
                 editable ? "" : "disabled"
               }>Add action</button>`
             : ""
@@ -313,12 +377,22 @@ export function render(ctx) {
       <h2>${moduleData.name}</h2>
       <p class="muted">${metaParts.join(" · ")}</p>
       ${
+        actionBusy
+          ? `<p class="muted">Reading every channel of this module — a table is
+              read four eeprom bytes at a time, so this takes a moment.${
+                actionProgress ? ` (${actionProgress.done} of ${actionProgress.total})` : ""
+              }</p>`
+          : ""
+      }
+      ${actionError ? `<p class="warning">${escapeAttr(actionError)}</p>` : ""}
+      ${
         !advancedMode
           ? `<p class="warning">Advanced mode is disabled. Enable it in the Velbus integration configuration to program module memory.</p>`
           : ""
       }
     </section>
     ${renderSettings(moduleData.config, interactionsDisabled, sections, channels)}
+    ${renderTriggers({ triggers, triggerCoverage })}
     ${
       actionTable
         ? `<div class="module-layout">
@@ -527,6 +601,10 @@ export function bind(root, handlers) {
 
   root.querySelector("#add-action")?.addEventListener("click", () => {
     handlers.onShowAddAction();
+  });
+
+  root.querySelector("#scan-module-actions")?.addEventListener("click", () => {
+    handlers.onScanModuleActions();
   });
 
   root.querySelector("#cancel-add-action")?.addEventListener("click", () => {

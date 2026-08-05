@@ -387,10 +387,13 @@ class VelbusPanel extends HTMLElement {
       );
   }
 
+  // Against the modules that can hold an action, not against every module on
+  // the bus: a PIR has no action table of its own, so counting it here would
+  // leave the page permanently reporting missing data.
   _triggerCoverage() {
     return {
       scanned: this._actionScan?.modules.length ?? 0,
-      total: this._modules.length,
+      total: this._actionScan?.scannable ?? this._modules.length,
     };
   }
 

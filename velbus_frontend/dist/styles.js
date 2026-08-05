@@ -229,16 +229,14 @@ export const PANEL_STYLES = `
     font-size: 0.95rem;
     color: var(--secondary-text-color, #727272);
   }
-  .channel-triggers {
-    margin-top: 20px;
-    padding-top: 12px;
-    border-top: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+  .channel-detail {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
   }
-  .channel-triggers h4 {
-    margin: 0 0 8px;
-    font-size: 0.95rem;
-    color: var(--secondary-text-color, #727272);
-  }
+  .channel-detail > .actions-panel { flex: 0 0 auto; }
   .status { margin-left: 6px; font-weight: 700; }
   .status-ok { color: var(--success-color, #43a047); }
   .status-bad { color: var(--error-color, #db4437); }

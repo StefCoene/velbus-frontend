@@ -139,7 +139,10 @@ function actionSummary(scan) {
   }
   const oldest = Math.min(...scan.modules.map((module) => module.read_at || 0));
   const when = oldest ? new Date(oldest * 1000).toLocaleString() : "unknown";
-  return `${scan.action_count} actions on ${scan.modules.length} modules, read ${when}.`;
+  // Out of the modules that can hold an action; the ones that only send, like
+  // a PIR, have no table to read.
+  const total = scan.scannable ?? scan.modules.length;
+  return `${scan.action_count} actions on ${scan.modules.length} of ${total} modules, read ${when}.`;
 }
 
 // The action tables are the one thing here that is not a setting: they are read

@@ -288,16 +288,19 @@ function triggersComplete(triggerCoverage) {
   return total > 0 && (triggerCoverage?.scanned ?? 0) >= total;
 }
 
-// Inside the actions panel, under the table of what drives this channel: the
-// same channel seen from the other side.
-function renderChannelTriggers(ctx, channel) {
+// A card of its own beside the slots that drive this channel, not a footnote
+// under them: for an input module the outgoing side is the whole story, and
+// for a relay both directions answer questions of the same weight.
+function renderChannelTriggers(ctx, channel, channelLabelText) {
   const { triggers, triggerCoverage } = ctx;
   if (!triggers) {
     return "";
   }
   const items = triggers.filter((item) => item.sourceChannel === channel);
-  return `<div class="channel-triggers">
-    <h4>This channel triggers</h4>
+  return `<section class="card actions-panel">
+    <div class="actions-header">
+      <h3>This channel triggers — ${escapeAttr(channelLabelText)}</h3>
+    </div>
     ${
       items.length
         ? triggerRows(items)
@@ -308,7 +311,7 @@ function renderChannelTriggers(ctx, channel) {
           }</p>`
     }
     ${triggerCoverageNote(triggerCoverage)}
-  </div>`;
+  </section>`;
 }
 
 // For a module with no action table of its own -- a PIR, a push button panel --
@@ -474,6 +477,7 @@ export function render(ctx) {
                   .join("")}
               </ul>
             </section>
+            <div class="channel-detail">
             <section class="card actions-panel">
               <div class="actions-header">
                 <h3>${
@@ -578,8 +582,13 @@ export function render(ctx) {
                   }
                 </tbody>
               </table>
-              ${renderChannelTriggers({ triggers, triggerCoverage }, actionChannel)}
             </section>
+            ${renderChannelTriggers(
+              { triggers, triggerCoverage },
+              actionChannel,
+              selectedChannelLabel
+            )}
+            </div>
           </div>
           ${renderAddActionDialog(dialogCtx)}`
         : `${renderTriggersByChannel({ triggers, triggerCoverage })}${

@@ -247,55 +247,104 @@ function renderAddActionDialog(ctx) {
 
 // The other direction. A slot lives in the module that reacts, so a channel
 // that only sends -- a push button, a PIR -- has nothing to show about itself
-// until the modules that listen to it have been read. That is what makes this
-// worth a card of its own rather than a column in the table above.
-function renderTriggers({ triggers, triggerCoverage }) {
+// until the modules that listen to it have been read.
+function triggerRows(items) {
+  return `<table>
+    <thead>
+      <tr><th>Module</th><th>Channel</th><th>Action</th><th>Slot</th></tr>
+    </thead>
+    <tbody>
+      ${items
+        .map(
+          (item) => `<tr>
+            <td>${escapeAttr(item.name)} (${item.address})</td>
+            <td>${escapeAttr(item.channelName)}</td>
+            <td>${escapeAttr(item.action)}</td>
+            <td>${item.slot}</td>
+          </tr>`
+        )
+        .join("")}
+    </tbody>
+  </table>`;
+}
+
+// How much of the bus the answer above is based on. Without this a channel
+// that nothing reacts to and a channel whose listeners were never read look
+// exactly the same.
+function triggerCoverageNote(triggerCoverage) {
+  const scanned = triggerCoverage?.scanned ?? 0;
+  const total = triggerCoverage?.total ?? 0;
+  if (total > 0 && scanned >= total) {
+    return "";
+  }
+  return `<p class="muted"><small>
+    Read ${scanned} of ${total} modules. Only modules whose action tables have
+    been read can appear here — use "Read all actions" to complete the picture.
+  </small></p>`;
+}
+
+function triggersComplete(triggerCoverage) {
+  const total = triggerCoverage?.total ?? 0;
+  return total > 0 && (triggerCoverage?.scanned ?? 0) >= total;
+}
+
+// Inside the actions panel, under the table of what drives this channel: the
+// same channel seen from the other side.
+function renderChannelTriggers(ctx, channel) {
+  const { triggers, triggerCoverage } = ctx;
   if (!triggers) {
     return "";
   }
-  const scanned = triggerCoverage?.scanned ?? 0;
-  const total = triggerCoverage?.total ?? 0;
-  const complete = total > 0 && scanned >= total;
+  const items = triggers.filter((item) => item.sourceChannel === channel);
+  return `<div class="channel-triggers">
+    <h4>This channel triggers</h4>
+    ${
+      items.length
+        ? triggerRows(items)
+        : `<p class="muted">${
+            triggersComplete(triggerCoverage)
+              ? "Nothing on the bus reacts to this channel."
+              : "No action found yet in what has been read."
+          }</p>`
+    }
+    ${triggerCoverageNote(triggerCoverage)}
+  </div>`;
+}
+
+// For a module with no action table of its own -- a PIR, a push button panel --
+// there is no channel list to pick from, so every channel that triggers
+// something gets its own heading.
+function renderTriggersByChannel(ctx) {
+  const { triggers, triggerCoverage } = ctx;
+  if (!triggers) {
+    return "";
+  }
+  const byChannel = new Map();
+  for (const item of triggers) {
+    if (!byChannel.has(item.sourceChannel)) {
+      byChannel.set(item.sourceChannel, []);
+    }
+    byChannel.get(item.sourceChannel).push(item);
+  }
   return `<section class="card">
     <h3>What this module triggers</h3>
     ${
-      triggers.length
-        ? `<table>
-            <thead>
-              <tr>
-                <th>From channel</th><th>Module</th><th>Channel</th>
-                <th>Action</th><th>Slot</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${triggers
-                .map(
-                  (item) => `<tr>
-                    <td>${escapeAttr(item.sourceChannelName)}</td>
-                    <td>${escapeAttr(item.name)} (${item.address})</td>
-                    <td>${escapeAttr(item.channelName)}</td>
-                    <td>${escapeAttr(item.action)}</td>
-                    <td>${item.slot}</td>
-                  </tr>`
-                )
-                .join("")}
-            </tbody>
-          </table>`
+      byChannel.size
+        ? [...byChannel]
+            .map(
+              ([, items]) => `<h4 class="setting-group">${escapeAttr(
+                items[0].sourceChannelName
+              )}</h4>
+              ${triggerRows(items)}`
+            )
+            .join("")
         : `<p class="muted">${
-            complete
+            triggersComplete(triggerCoverage)
               ? "Nothing on the bus reacts to this module."
               : "No action found yet in what has been read."
           }</p>`
     }
-    ${
-      complete
-        ? ""
-        : `<p class="muted"><small>
-            Read ${scanned} of ${total} modules. Only modules whose action
-            tables have been read can appear here — use "Read all actions" on
-            the All modules page to complete the picture.
-          </small></p>`
-    }
+    ${triggerCoverageNote(triggerCoverage)}
   </section>`;
 }
 
@@ -392,7 +441,6 @@ export function render(ctx) {
       }
     </section>
     ${renderSettings(moduleData.config, interactionsDisabled, sections, channels)}
-    ${renderTriggers({ triggers, triggerCoverage })}
     ${
       actionTable
         ? `<div class="module-layout">
@@ -530,10 +578,11 @@ export function render(ctx) {
                   }
                 </tbody>
               </table>
+              ${renderChannelTriggers({ triggers, triggerCoverage }, actionChannel)}
             </section>
           </div>
           ${renderAddActionDialog(dialogCtx)}`
-        : `${
+        : `${renderTriggersByChannel({ triggers, triggerCoverage })}${
             channelNames
               ? `<section class="card">
               <h3>Channel names</h3>

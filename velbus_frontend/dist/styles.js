@@ -229,6 +229,7 @@ export const PANEL_STYLES = `
     font-size: 0.95rem;
     color: var(--secondary-text-color, #727272);
   }
+  progress { display: block; width: 100%; height: 6px; margin-top: 6px; }
   .menu-anchor { position: relative; }
   .menu-button {
     width: auto;

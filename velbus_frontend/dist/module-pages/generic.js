@@ -351,6 +351,21 @@ function renderTriggersByChannel(ctx) {
   </section>`;
 }
 
+// Memory is read four bytes at a time, so bytes are what moves while a module
+// is being read; counting modules would sit at "0 of 1" for the whole minute.
+function renderReadProgress(progress) {
+  const done = progress?.bytes_done ?? 0;
+  const total = progress?.bytes_total ?? 0;
+  if (!total) {
+    return `<p class="muted">Reading this module\u2019s action tables…</p>`;
+  }
+  const percent = Math.min(100, Math.round((done / total) * 100));
+  return `<p class="muted">
+    Reading this module\u2019s action tables — ${done} of ${total} bytes (${percent}%).
+    <progress value="${done}" max="${total}"></progress>
+  </p>`;
+}
+
 // Everything that acts on the module as a whole, in one place. These used to
 // be buttons beside the back link, which put them in the same row as -- and at
 // the same weight as -- leaving the page.
@@ -489,14 +504,7 @@ export function render(ctx) {
       </div>
       <h2>${moduleData.name}</h2>
       <p class="muted">${metaParts.join(" · ")}</p>
-      ${
-        actionBusy
-          ? `<p class="muted">Reading every channel of this module — a table is
-              read four eeprom bytes at a time, so this takes a moment.${
-                actionProgress ? ` (${actionProgress.done} of ${actionProgress.total})` : ""
-              }</p>`
-          : ""
-      }
+      ${actionBusy ? renderReadProgress(actionProgress) : ""}
       ${actionError ? `<p class="warning">${escapeAttr(actionError)}</p>` : ""}
       ${
         !advancedMode

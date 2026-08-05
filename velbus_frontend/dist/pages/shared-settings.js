@@ -133,6 +133,20 @@ function renderActions(ctx) {
   </section>`;
 }
 
+// Two units, because they answer different questions: the modules say how far
+// the run has come, the bytes say that the module in hand is moving at all.
+function renderScanProgress(progress) {
+  const bytes = progress.bytes_total
+    ? ` — ${progress.bytes_done} of ${progress.bytes_total} bytes`
+    : "";
+  return `<p class="muted">
+    Module ${progress.done + 1} of ${progress.total}: ${escapeAttr(
+      progress.name
+    )} (${progress.address})${bytes}.
+    <progress value="${progress.done}" max="${progress.total}"></progress>
+  </p>`;
+}
+
 function actionSummary(scan) {
   if (!scan || !scan.modules.length) {
     return "Nothing read yet.";
@@ -170,13 +184,7 @@ function renderActionCache(ctx) {
         actionBusy ? "disabled" : ""
       }>Forget</button>
     </div>
-    ${
-      actionProgress
-        ? `<p class="muted">Reading ${escapeAttr(actionProgress.name)} (${
-            actionProgress.address
-          }) — ${actionProgress.done} of ${actionProgress.total}.</p>`
-        : ""
-    }
+    ${actionProgress ? renderScanProgress(actionProgress) : ""}
     ${actionError ? `<p class="warning">${escapeAttr(actionError)}</p>` : ""}
     ${
       actionScan?.modules.some((module) => module.error)

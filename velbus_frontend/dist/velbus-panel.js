@@ -700,7 +700,10 @@ class VelbusPanel extends HTMLElement {
           this._sharedBusy = false;
     this._clockResult = null;
           // Read back, so what the page shows is what the modules report
-          // rather than what was asked for.
+          // rather than what was asked for. The module list carries the same
+          // values in its table, and leaving it alone would have the two
+          // pages disagree until a reload.
+          await this._refreshModules();
           await this._loadSharedSettings();
         },
       });
